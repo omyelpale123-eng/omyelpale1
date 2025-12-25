@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Movie Booking — Ticket Demo</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#ff6b6b;--muted:#9aa6b2;--glass: rgba(255,255,255,0.03)}
+    *{box-sizing:border-box}
+    body{font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; margin:0; background:linear-gradient(180deg,#071026 0%, #081328 60%); color:#e6eef6; padding:28px}
+    .container{max-width:980px;margin:0 auto}
+
+    header{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+    header h1{font-size:20px;margin:0}
+    .card{background:linear-gradient(180deg,var(--card), #071725); padding:18px; border-radius:12px; box-shadow:0 6px 30px rgba(2,6,23,0.6);}
+
+    .controls{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+    label{display:block;font-size:13px;color:var(--muted)}
+    select,input[type=date]{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+
+    .layout{display:grid;grid-template-columns:560px 1fr;gap:18px;margin-top:14px}
+
+    /* Seat map */
+    .screen{background:linear-gradient(90deg,#fff0 0,#fff1 40%,#fff0 100%);height:36px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#071725;font-weight:700;margin-bottom:10px}
+    .seat-map{display:grid;grid-template-columns:repeat(10,1fr);gap:8px;padding:12px;background:var(--glass);border-radius:10px}
+    .seat{height:36px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;border:1px solid rgba(255,255,255,0.04);background:linear-gradient(180deg,#0b1624,#071022)}
+    .seat.available:hover{transform:translateY(-4px);box-shadow:0 6px 18px rgba(0,0,0,0.6)}
+    .seat.selected{background:linear-gradient(180deg,#2dd4bf,#06b6d4);color:#042022;border-color:transparent}
+    .seat.occupied{background:linear-gradient(180deg,#334155,#253045);color:#778899;cursor:not-allowed}
+
+    .legend{display:flex;gap:8px;align-items:center;margin-top:8px}
+    .legend .item{display:flex;gap:8px;align-items:center;font-size:13px}
+    .box{width:18px;height:14px;border-radius:4px;border:1px solid rgba(255,255,255,0.04)}
+
+    /* Summary */
+    .summary{padding:12px;border-radius:10px;background:linear-gradient(180deg,#071426, #051022);}
+    .summary h3{margin:0 0 8px 0}
+    .summary .rows{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+    .btn{display:inline-block;padding:10px 12px;border-radius:8px;border:0;background:var(--accent);color:#071722;font-weight:700;cursor:pointer}
+    .btn.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+
+    /* Ticket modal */
+    .ticket{margin-top:12px;padding:12px;border-radius:8px;background:linear-gradient(180deg,#0b1220,#061124);border:1px dashed rgba(255,255,255,0.04)}
+    .ticket pre{white-space:pre-wrap;margin:0;font-family:monospace}
+
+    footer{margin-top:14px;color:var(--muted);font-size:13px}
+
+    /* responsive */
+    @media (max-width:900px){.layout{grid-template-columns:1fr;}.seat-map{grid-template-columns:repeat(8,1fr)}}
+
+    /* print */
+    @media print{body{background:white;color:black} .btn, .controls, header, .legend{display:none} .ticket{border:0}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="card" style="padding:10px 12px;display:flex;align-items:center;gap:12px">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden><rect width="24" height="24" rx="6" fill="#0ea5a4"/></svg>
+        <h1>Movie Booking — Demo ticket</h1>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="controls">
+        <div>
+          <label for="movie">Movie</label>
+          <select id="movie">
+            <option value="The Midnight Heist" data-price="220">The Midnight Heist — ₹220</option>
+            <option value="Space Between Stars" data-price="250">Space Between Stars — ₹250</option>
+            <option value="Romance in Rain" data-price="180">Romance in Rain — ₹180</option>
+          </select>
+        </div>
+        <div>
+          <label for="date">Date</label>
+          <input id="date" type="date" />
+        </div>
+        <div>
+          <label for="time">Time</label>
+          <select id="time">
+            <option>10:00 AM</option>
+            <option>1:30 PM</option>
+            <option>4:45 PM</option>
+            <option>8:15 PM</option>
+          </select>
+        </div>
+        <div style="margin-left:auto">
+          <label>&nbsp;</label>
+          <button class="btn" id="resetBtn">Reset Seats</button>
+        </div>
+      </div>
+
+      <div class="layout">
+        <div>
+          <div class="screen">SCREEN</div>
+          <div class="seat-map" id="seatMap" aria-label="Seat selection grid"></div>
+          <div class="legend">
+            <div class="item"><span class="box" style="background:linear-gradient(180deg,#0b1624,#071022)"></span> Available</div>
+            <div class="item"><span class="box" style="background:linear-gradient(180deg,#2dd4bf,#06b6d4)"></span> Selected</div>
+            <div class="item"><span class="box" style="background:linear-gradient(180deg,#334155,#253045)"></span> Occupied</div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="summary">
+            <h3>Booking summary</h3>
+            <div class="rows">
+              <div>Movie: <strong id="summaryMovie">The Midnight Heist</strong></div>
+              <div>Date: <strong id="summaryDate">—</strong></div>
+              <div>Time: <strong id="summaryTime">10:00 AM</strong></div>
+              <div>Seats: <strong id="summarySeats">0</strong></div>
+              <div>Seat codes: <span id="seatCodes">—</span></div>
+              <div>Price per seat: <strong id="pricePer">₹220</strong></div>
+              <div>Total: <strong id="totalPrice">₹0</strong></div>
+            </div>
+
+            <div style="display:flex;gap:8px">
+              <button class="btn" id="confirmBtn">Confirm & Generate Ticket</button>
+              <button class="btn secondary" id="clearBtn">Clear Selection</button>
+            </div>
+
+            <div class="ticket" id="ticketBox" style="display:none">
+              <h4 style="margin-top:0">Your e‑Ticket</h4>
+              <pre id="ticketText">—</pre>
+              <div style="margin-top:10px;display:flex;gap:8px">
+                <button class="btn" id="printBtn">Print Ticket</button>
+                <button class="btn secondary" id="downloadBtn">Download (txt)</button>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <footer>Note: This is a front-end demo. No payment or back-end is connected.</footer>
+    </div>
+  </div>
+
+  <script>
+    // Configuration
+    const ROWS = 8; // rows labeled A..H
+    const COLS = 10; // seat numbers 1..10
+
+    // Simple initial occupied seats set (for demo)
+    const occupied = new Set(["A3","A4","B6","C1","D10","F5"]);
+
+    // DOM refs
+    const seatMap = document.getElementById('seatMap');
+    const summaryMovie = document.getElementById('summaryMovie');
+    const summaryDate = document.getElementById('summaryDate');
+    const summaryTime = document.getElementById('summaryTime');
+    const summarySeats = document.getElementById('summarySeats');
+    const seatCodes = document.getElementById('seatCodes');
+    const pricePer = document.getElementById('pricePer');
+    const totalPrice = document.getElementById('totalPrice');
+    const ticketBox = document.getElementById('ticketBox');
+    const ticketText = document.getElementById('ticketText');
+
+    const movieSelect = document.getElementById('movie');
+    const dateInput = document.getElementById('date');
+    const timeSelect = document.getElementById('time');
+
+    const resetBtn = document.getElementById('resetBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const confirmBtn = document.getElementById('confirmBtn');
+    const printBtn = document.getElementById('printBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    // State
+    let selectedSeats = new Set();
+
+    function rowLabel(i){ return String.fromCharCode(65 + i); }
+
+    function buildSeatMap(){
+      seatMap.innerHTML = '';
+      for(let r=0;r<ROWS;r++){
+        for(let c=1;c<=COLS;c++){
+          const code = rowLabel(r)+c;
+          const div = document.createElement('div');
+          div.className = 'seat';
+          if(occupied.has(code)) div.classList.add('occupied'); else div.classList.add('available');
+          div.setAttribute('data-code',code);
+          div.setAttribute('role','button');
+          div.setAttribute('aria-pressed','false');
+          div.textContent = code;
+          div.addEventListener('click',(e)=> onSeatClick(code,div));
+          seatMap.appendChild(div);
+        }
+      }
+    }
+
+    function onSeatClick(code, div){
+      if(div.classList.contains('occupied')) return;
+      if(selectedSeats.has(code)){
+        selectedSeats.delete(code);
+        div.classList.remove('selected');
+        div.setAttribute('aria-pressed','false');
+      } else {
+        selectedSeats.add(code);
+        div.classList.add('selected');
+        div.setAttribute('aria-pressed','true');
+      }
+      refreshSummary();
+    }
+
+    function refreshSummary(){
+      const movieOpt = movieSelect.options[movieSelect.selectedIndex];
+      const price = Number(movieOpt.getAttribute('data-price')||0);
+      summaryMovie.textContent = movieOpt.value;
+      summaryTime.textContent = timeSelect.value;
+      summaryDate.textContent = dateInput.value || '—';
+      summarySeats.textContent = selectedSeats.size;
+      seatCodes.textContent = selectedSeats.size? Array.from(selectedSeats).join(', '): '—';
+      pricePer.textContent = '₹' + price;
+      totalPrice.textContent = '₹' + (price * selectedSeats.size);
+    }
+
+    // Buttons
+    resetBtn.addEventListener('click',()=>{
+      selectedSeats.clear();
+      occupied.clear();
+      // rebuild with no occupied
+      buildSeatMap();
+      refreshSummary();
+      ticketBox.style.display = 'none';
+    });
+
+    clearBtn.addEventListener('click',()=>{
+      selectedSeats.clear();
+      // remove selected classes
+      document.querySelectorAll('.seat.selected').forEach(el=>el.classList.remove('selected'));
+      refreshSummary();
+      ticketBox.style.display = 'none';
+    });
+
+    movieSelect.addEventListener('change',refreshSummary);
+    timeSelect.addEventListener('change',refreshSummary);
+    dateInput.addEventListener('change',refreshSummary);
+
+    confirmBtn.addEventListener('click',()=>{
+      if(selectedSeats.size===0){
+        alert('Please select at least one seat.');
+        return;
+      }
+      // Mark seats as occupied (simple client-side simulation)
+      selectedSeats.forEach(s=>occupied.add(s));
+      // Prepare ticket text
+      const movie = movieSelect.value;
+      const date = dateInput.value || '—';
+      const time = timeSelect.value;
+      const seats = Array.from(selectedSeats).sort();
+      const price = Number(movieSelect.options[movieSelect.selectedIndex].getAttribute('data-price')||0);
+      const total = price * seats.length;
+      const now = new Date();
+      const ticket = `--- e-Ticket ---
+Movie: ${movie}
+Date: ${date}
+Time: ${time}
+Seats: ${seats.join(', ')}
+Price/seat: ₹${price}
+Total: ₹${total}
+Booked at: ${now.toLocaleString()}
+Ticket ID: ${Math.random().toString(36).slice(2,9).toUpperCase()}
+
+Enjoy the show!`;
+      ticketText.textContent = ticket;
+      ticketBox.style.display = 'block';
+      // remove selected markers (they become occupied)
+      document.querySelectorAll('.seat.selected').forEach(el=>el.classList.remove('selected'));
+      // rebuild to show occupied
+      buildSeatMap();
+      selectedSeats.clear();
+      refreshSummary();
+    });
+
+    printBtn.addEventListener('click',()=>{
+      window.print();
+    });
+
+    downloadBtn.addEventListener('click',()=>{
+      const text = ticketText.textContent || '';
+      const blob = new Blob([text], {type: 'text/plain'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'ticket.txt';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    // initial
+    const today = new Date().toISOString().slice(0,10);
+    dateInput.value = today;
+    buildSeatMap();
+    refreshSummary();
+  </script>
+</body>
+</html>
